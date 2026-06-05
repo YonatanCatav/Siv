@@ -237,6 +237,7 @@ export default function App() {
       case 'game_over':
         dispatch({ type: 'GAME_OVER', scores: msg.scores }); break
       case 'kicked':
+      case 'room_deleted':
         dispatch({ type: 'GO_HOME' }); break
       case 'error':
         dispatch({ type: 'ERROR', msg: msg.msg })

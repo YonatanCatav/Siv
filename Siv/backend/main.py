@@ -121,6 +121,7 @@ class Room:
     phase: str = "LOBBY"
     round_answers: list = field(default_factory=list)
     is_public: bool = False
+    password: Optional[str] = None
     settings: dict = field(default_factory=lambda: {
         "answer_time": 60,
         "vote_time": 30,
@@ -462,6 +463,7 @@ class Room:
             "settings": self.settings,
             "current_q": self.current_q,
             "is_public": self.is_public,
+            "has_password": bool(self.password),
         })
 
 
@@ -487,7 +489,8 @@ async def ws_endpoint(websocket: WebSocket):
             if t == "create_room":
                 custom = data.get("code", "").upper().strip()[:8]
                 code = custom if (custom and len(custom) >= 2 and custom not in ROOMS) else gen_code()
-                room = Room(code=code, host_id=pid, is_public=bool(data.get("is_public", False)))
+                pw = data.get("password", "").strip()
+                room = Room(code=code, host_id=pid, is_public=bool(data.get("is_public", False)), password=pw or None)
                 ROOMS[code] = room
                 name = data.get("name", "Host")[:20]
                 avatar = random.choice(AVATARS)
@@ -703,6 +706,18 @@ async def ws_endpoint(websocket: WebSocket):
                                 p.is_display = False
                         await room.broadcast({"type": "game_restart"})
                         await room.broadcast_room_state()
+
+                elif t == "delete_room":
+                    if not player.is_host:
+                        await room.send(pid, {"type": "error", "msg": "Only the host can delete the room"})
+                        continue
+                    if room.password:
+                        pw = data.get("password", "")
+                        if pw != room.password:
+                            await room.send(pid, {"type": "error", "msg": "Wrong password"})
+                            continue
+                    await room.broadcast({"type": "room_deleted"})
+                    del ROOMS[room.code]
 
                 elif t == "kick_player":
                     if not player.is_host:

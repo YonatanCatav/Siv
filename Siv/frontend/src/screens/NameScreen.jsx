@@ -10,6 +10,7 @@ export default function NameScreen({ state, dispatch }) {
   const [avatar, setAvatar] = useState(AVATARS[Math.floor(Math.random() * AVATARS.length)])
   const [customCode, setCustomCode] = useState('')
   const [isPublic, setIsPublic] = useState(false)
+  const [password, setPassword] = useState('')
   const lang = state.lang
 
   function submit(e) {
@@ -17,7 +18,7 @@ export default function NameScreen({ state, dispatch }) {
     const n = name.trim()
     if (!n) return
     if (state.isCreating) {
-      send('create_room', { name: n, code: customCode.trim().toUpperCase(), is_public: isPublic })
+      send('create_room', { name: n, code: customCode.trim().toUpperCase(), is_public: isPublic, password: password.trim() })
     } else {
       send('join_room', { code: state.pendingCode, name: n })
     }
@@ -65,6 +66,14 @@ export default function NameScreen({ state, dispatch }) {
                 autoComplete="off"
                 dir="ltr"
                 style={{ textAlign: 'center', fontSize: '1rem', letterSpacing: '0.12em' }}
+              />
+              <input
+                className="input"
+                placeholder={t(lang, 'roomPasswordPlaceholder')}
+                value={password}
+                onChange={e => setPassword(e.target.value.slice(0, 30))}
+                autoComplete="off"
+                type="password"
               />
               <label className="public-room-toggle">
                 <input

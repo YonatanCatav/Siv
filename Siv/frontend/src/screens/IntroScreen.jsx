@@ -67,10 +67,31 @@ function ScoreVisual() {
   )
 }
 
+function FunnyVisual() {
+  const [voted, setVoted] = useState(false)
+  return (
+    <div className="intro-visual intro-funny-demo">
+      <div className="intro-funny-card" style={{ background: 'rgba(233,30,140,0.12)', borderColor: '#E91E8C' }}>
+        <span style={{ flex: 1, fontWeight: 700 }}>לאכול ארוחת בוקר לארוחת לילה</span>
+        <button
+          className={`intro-funny-btn ${voted ? 'voted' : ''}`}
+          onClick={() => setVoted(v => !v)}
+        >
+          😂{voted ? ' ×1' : ''}
+        </button>
+      </div>
+      {voted && (
+        <div className="intro-funny-reward">+100 נקודות לכותב!</div>
+      )}
+    </div>
+  )
+}
+
 const SLIDES = [
   { icon: '✏️', titleKey: 'introStep1Title', descKey: 'introStep1Desc', Visual: SentenceVisual },
   { icon: '🗳️', titleKey: 'introStep2Title', descKey: 'introStep2Desc', Visual: CardsVisual },
   { icon: '🏆', titleKey: 'introStep3Title', descKey: 'introStep3Desc', Visual: ScoreVisual },
+  { icon: '😂', titleKey: 'introStep4Title', descKey: 'introStep4Desc', Visual: FunnyVisual },
 ]
 
 export default function IntroScreen({ state }) {
@@ -101,14 +122,26 @@ export default function IntroScreen({ state }) {
         <Visual lang={lang} />
       </div>
 
-      <div className="intro-dots">
-        {SLIDES.map((_, i) => (
-          <button
-            key={i}
-            className={`intro-dot ${i === slideIdx ? 'active' : ''} ${i < slideIdx ? 'past' : ''}`}
-            onClick={() => setSlideIdx(i)}
-          />
-        ))}
+      <div className="intro-nav">
+        <button
+          className="intro-arrow"
+          onClick={() => setSlideIdx(i => Math.max(0, i - 1))}
+          disabled={slideIdx === 0}
+        >‹</button>
+        <div className="intro-dots">
+          {SLIDES.map((_, i) => (
+            <button
+              key={i}
+              className={`intro-dot ${i === slideIdx ? 'active' : ''} ${i < slideIdx ? 'past' : ''}`}
+              onClick={() => setSlideIdx(i)}
+            />
+          ))}
+        </div>
+        <button
+          className="intro-arrow"
+          onClick={() => setSlideIdx(i => Math.min(SLIDES.length - 1, i + 1))}
+          disabled={slideIdx === SLIDES.length - 1}
+        >›</button>
       </div>
 
       <div className="intro-footer">

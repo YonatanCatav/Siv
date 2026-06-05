@@ -11,6 +11,8 @@ export default function SetupScreen({ state }) {
   const [editId, setEditId] = useState(null)
   const [isWarmup, setIsWarmup] = useState(false)
   const [playerAnswerId, setPlayerAnswerId] = useState(null)
+  const [showDelete, setShowDelete] = useState(false)
+  const [deletePw, setDeletePw] = useState('')
   const lang = state.lang
 
   const room = state.room
@@ -77,6 +79,9 @@ export default function SetupScreen({ state }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {room.is_public && (
             <span className="public-indicator" title={t(lang, 'publicRoom')}>🌐</span>
+          )}
+          {room.has_password && (
+            <span className="public-indicator" title={t(lang, 'roomPassword')}>🔑</span>
           )}
           <button
             className={`display-mode-btn ${state.isDisplay ? 'active' : ''}`}
@@ -342,6 +347,35 @@ export default function SetupScreen({ state }) {
         >
           {canStart ? t(lang, 'startGame', questions.length) : t(lang, 'addQuestionsToStart')}
         </button>
+        {!showDelete ? (
+          <button className="btn btn-secondary btn-full" style={{ color: 'var(--red)', borderColor: 'rgba(244,67,54,0.3)' }} onClick={() => setShowDelete(true)}>
+            {t(lang, 'deleteRoom')}
+          </button>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+            {room.has_password && (
+              <input
+                className="input"
+                style={{ flex: 1, fontSize: '0.9rem' }}
+                placeholder={t(lang, 'enterPasswordToDelete')}
+                type="password"
+                value={deletePw}
+                onChange={e => setDeletePw(e.target.value)}
+                autoFocus
+              />
+            )}
+            <button
+              className="btn btn-full"
+              style={{ background: 'var(--red)', color: '#fff', flex: room.has_password ? 0 : 1 }}
+              onClick={() => { send('delete_room', { password: deletePw }); setShowDelete(false) }}
+            >
+              {t(lang, 'confirmDelete')}
+            </button>
+            <button className="btn btn-secondary" onClick={() => { setShowDelete(false); setDeletePw('') }}>
+              {t(lang, 'cancel')}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
