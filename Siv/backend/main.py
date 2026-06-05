@@ -486,6 +486,10 @@ async def ws_endpoint(websocket: WebSocket):
 
             t = data.get("type")
 
+            if t == "ping":
+                await websocket.send_text(json.dumps({"type": "pong"}))
+                continue
+
             if t == "create_room":
                 custom = data.get("code", "").upper().strip()[:8]
                 code = custom if (custom and len(custom) >= 2 and custom not in ROOMS) else gen_code()
@@ -513,11 +517,7 @@ async def ws_endpoint(websocket: WebSocket):
 
                 room = ROOMS[code]
 
-                if room.phase != "LOBBY" and not room.is_public:
-                    await websocket.send_text(json.dumps({"type": "error", "msg": "Game already started"}))
-                    continue
-
-                # Reconnect attempt
+                # Reconnect attempt — check before phase guard so mid-game reconnects work
                 existing_pid = data.get("player_id")
                 if existing_pid and existing_pid in room.players:
                     CONNECTIONS.pop(pid, None)
@@ -528,6 +528,10 @@ async def ws_endpoint(websocket: WebSocket):
                         "player": room.players[pid].to_dict(),
                     }))
                     await room.broadcast_room_state()
+                    continue
+
+                if room.phase != "LOBBY" and not room.is_public:
+                    await websocket.send_text(json.dumps({"type": "error", "msg": "Game already started"}))
                     continue
 
                 # Unique name
@@ -755,8 +759,21 @@ async def list_rooms():
                 "player_count": len(r.active_players()),
                 "phase": r.phase,
                 "is_public": r.is_public,
+                "has_password": bool(r.password),
             })
     return result
+
+
+@app.delete("/rooms/{code}")
+async def delete_room_http(code: str, password: str = ""):
+    room = ROOMS.get(code.upper())
+    if not room:
+        return {"error": "Room not found"}
+    if room.password and password != room.password:
+        return {"error": "Wrong password"}
+    await room.broadcast({"type": "room_deleted"})
+    del ROOMS[code.upper()]
+    return {"ok": True}
 
 
 # ─── Static files ──────────────────────────────────────────────────────────────

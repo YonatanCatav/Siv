@@ -1,5 +1,6 @@
 let ws = null
 let reconnectTimer = null
+let pingInterval = null
 let messageHandler = null
 let connectHandler = null
 let disconnectHandler = null
@@ -25,6 +26,12 @@ function _open() {
 
   ws.onopen = () => {
     clearTimeout(reconnectTimer)
+    clearInterval(pingInterval)
+    pingInterval = setInterval(() => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, 25000)
     connectHandler?.()
   }
 
@@ -35,6 +42,8 @@ function _open() {
   }
 
   ws.onclose = () => {
+    clearInterval(pingInterval)
+    pingInterval = null
     disconnectHandler?.()
     reconnectTimer = setTimeout(_open, 2000)
   }
@@ -50,6 +59,7 @@ export function send(type, data = {}) {
 
 export function disconnect() {
   clearTimeout(reconnectTimer)
+  clearInterval(pingInterval)
   ws?.close()
   ws = null
 }

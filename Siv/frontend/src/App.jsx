@@ -71,6 +71,7 @@ function reducer(state, action) {
     case 'GO_JOIN':
       return { ...state, uiScreen: 'name', isCreating: false, pendingCode: action.code }
     case 'GO_HOME':
+      localStorage.removeItem('siv_session')
       return { ...INIT, connected: state.connected, playerId: state.playerId, lang: state.lang }
 
     case 'ROOM_CREATED':
@@ -80,6 +81,7 @@ function reducer(state, action) {
       return {
         ...state,
         uiScreen: 'ingame',
+        playerId: p.id,
         isHost: p.is_host,
         isDisplay: p.is_display,
         playerName: p.name,
@@ -206,11 +208,21 @@ export default function App() {
 
   const handleMsg = useCallback((msg) => {
     switch (msg.type) {
-      case 'connected':
-        dispatch({ type: 'CONNECTED', id: msg.id }); break
+      case 'connected': {
+        dispatch({ type: 'CONNECTED', id: msg.id })
+        try {
+          const saved = JSON.parse(localStorage.getItem('siv_session') || 'null')
+          if (saved?.roomCode && saved?.playerId) {
+            send('join_room', { code: saved.roomCode, player_id: saved.playerId, name: '' })
+          }
+        } catch (_) {}
+        break
+      }
       case 'room_created':
+        try { localStorage.setItem('siv_session', JSON.stringify({ roomCode: msg.code, playerId: msg.player.id })) } catch (_) {}
         dispatch({ type: 'ROOM_CREATED', player: msg.player }); break
       case 'joined':
+        try { localStorage.setItem('siv_session', JSON.stringify({ roomCode: msg.code, playerId: msg.player.id })) } catch (_) {}
         dispatch({ type: 'JOINED', player: msg.player }); break
       case 'reconnected':
         dispatch({ type: 'RECONNECTED', player: msg.player }); break
@@ -238,6 +250,7 @@ export default function App() {
         dispatch({ type: 'GAME_OVER', scores: msg.scores }); break
       case 'kicked':
       case 'room_deleted':
+        localStorage.removeItem('siv_session')
         dispatch({ type: 'GO_HOME' }); break
       case 'error':
         dispatch({ type: 'ERROR', msg: msg.msg })

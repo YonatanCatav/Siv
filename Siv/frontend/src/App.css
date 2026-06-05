@@ -412,6 +412,81 @@ html, body {
   color: var(--muted);
 }
 
+.room-entry-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.room-entry-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.room-entry-join {
+  flex: 1;
+  min-width: 0;
+}
+
+.room-entry-lock {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.room-entry-trash {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--muted);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.room-entry-trash:hover {
+  background: rgba(229,57,53,0.15);
+  border-color: rgba(229,57,53,0.4);
+  color: #ff6b6b;
+}
+
+.room-delete-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  animation: fadeIn 0.15s ease;
+}
+
+.room-delete-pw-input {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 0.88rem;
+}
+
+.room-delete-error {
+  font-size: 0.75rem;
+  color: #ff6b6b;
+  white-space: nowrap;
+}
+
+.btn-danger {
+  background: rgba(229,57,53,0.2);
+  border: 1px solid rgba(229,57,53,0.4);
+  color: #ff6b6b;
+  padding: 7px 14px;
+  border-radius: var(--r);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-danger:hover {
+  background: rgba(229,57,53,0.35);
+}
+
 .public-room-toggle {
   display: flex;
   align-items: center;
