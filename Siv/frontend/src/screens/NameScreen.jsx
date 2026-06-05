@@ -18,9 +18,9 @@ export default function NameScreen({ state, dispatch }) {
     const n = name.trim()
     if (!n) return
     if (state.isCreating) {
-      send('create_room', { name: n, code: customCode.trim().toUpperCase(), is_public: isPublic, password: password.trim() })
+      send('create_room', { name: n, avatar, code: customCode.trim().toUpperCase(), is_public: isPublic, password: password.trim() })
     } else {
-      send('join_room', { code: state.pendingCode, name: n })
+      send('join_room', { code: state.pendingCode, name: n, avatar })
     }
   }
 

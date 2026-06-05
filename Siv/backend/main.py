@@ -493,7 +493,7 @@ async def ws_endpoint(websocket: WebSocket):
                 room = Room(code=code, host_id=pid, is_public=bool(data.get("is_public", False)), password=pw or None)
                 ROOMS[code] = room
                 name = data.get("name", "Host")[:20]
-                avatar = random.choice(AVATARS)
+                avatar = data.get("avatar") or random.choice(AVATARS)
                 player = Player(id=pid, name=name, avatar=avatar, is_host=True, is_display=True)
                 room.players[pid] = player
                 await websocket.send_text(json.dumps({
@@ -537,7 +537,7 @@ async def ws_endpoint(websocket: WebSocket):
                     name = f"{base}{suffix}"
                     suffix += 1
 
-                avatar = random.choice(AVATARS)
+                avatar = data.get("avatar") or random.choice(AVATARS)
                 is_spectator = room.phase != "LOBBY"
                 player = Player(id=pid, name=name, avatar=avatar, is_display=is_spectator)
                 room.players[pid] = player

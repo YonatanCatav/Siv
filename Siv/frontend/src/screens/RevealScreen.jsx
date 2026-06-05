@@ -93,13 +93,13 @@ export default function RevealScreen({ state }) {
 
     let delay
     if (shownCount === 0) {
-      delay = 900
+      delay = 1000
     } else if (prev && !prev.is_real && prev.vote_count === 0) {
-      delay = 650
+      delay = 800
     } else if (next?.is_real) {
-      delay = 3200
+      delay = 5500   // long dramatic pause before the real answer
     } else {
-      delay = 1900
+      delay = 2800   // more time on each voted bluff
     }
 
     const timer = setTimeout(() => setShownCount(n => n + 1), delay)
