@@ -1,0 +1,305 @@
+import { useState } from 'react'
+import { send } from '../socket.js'
+import { t } from '../i18n.js'
+
+export default function SetupScreen({ state }) {
+  const [tab, setTab] = useState('questions')
+  const [sentence, setSentence] = useState('')
+  const [answer, setAnswer] = useState('')
+  const [qTime, setQTime] = useState(60)
+  const [qVoteTime, setQVoteTime] = useState(null)  // null = use global
+  const [editId, setEditId] = useState(null)
+  const [isWarmup, setIsWarmup] = useState(false)
+  const lang = state.lang
+
+  const room = state.room
+  if (!room) return null
+
+  const players = room.players || []
+  const questions = room.questions || []
+  const settings = room.settings || {}
+  const canStart = questions.length > 0
+
+  function addOrUpdate(e) {
+    e.preventDefault()
+    const s = sentence.trim()
+    const a = answer.trim()
+    if (!s || !a) return
+    if (editId) {
+      send('update_question', { id: editId, sentence: s, answer: a, time_limit: qTime, vote_time: qVoteTime, is_warmup: isWarmup })
+      setEditId(null)
+    } else {
+      send('add_question', { sentence: s, answer: a, time_limit: qTime, vote_time: qVoteTime, is_warmup: isWarmup })
+    }
+    setSentence('')
+    setAnswer('')
+    setQTime(60)
+    setQVoteTime(null)
+    setIsWarmup(false)
+  }
+
+  function startEdit(q) {
+    setEditId(q.id)
+    setSentence(q.sentence)
+    setAnswer(q.answer)
+    setQTime(q.time_limit)
+    setQVoteTime(q.vote_time ?? null)
+    setIsWarmup(!!q.is_warmup)
+    setTab('questions')
+  }
+
+  function cancelEdit() {
+    setEditId(null)
+    setSentence('')
+    setAnswer('')
+    setQTime(60)
+    setQVoteTime(null)
+    setIsWarmup(false)
+  }
+
+  function toggleSetting(key) {
+    send('update_settings', { settings: { [key]: !settings[key] } })
+  }
+
+  function setTimeSetting(key, delta) {
+    const val = Math.max(10, Math.min(120, (settings[key] || 60) + delta))
+    send('update_settings', { settings: { [key]: val } })
+  }
+
+  return (
+    <div className="screen setup">
+      <div className="topbar">
+        <span className="topbar-logo">SIV</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {room.is_public && (
+            <span className="public-indicator" title={t(lang, 'publicRoom')}>🌐</span>
+          )}
+          <button
+            className={`display-mode-btn ${state.isDisplay ? 'active' : ''}`}
+            onClick={() => send('set_display', { display: !state.isDisplay })}
+          >
+            {t(lang, 'displayMode')} {state.isDisplay ? '✓' : '○'}
+          </button>
+          <span className="topbar-code" dir="ltr">{room.code}</span>
+        </div>
+      </div>
+
+      {state.isDisplay && (
+        <div style={{ padding: '6px 20px', background: 'rgba(255,193,7,0.1)', borderBottom: '1px solid rgba(255,193,7,0.2)', fontSize: '0.78rem', color: 'var(--yellow)', fontWeight: 700, textAlign: 'center' }}>
+          {t(lang, 'hostSub')}
+        </div>
+      )}
+
+      <div className="setup-tabs">
+        <button className={`setup-tab ${tab === 'questions' ? 'active' : ''}`} onClick={() => setTab('questions')}>
+          📝 {t(lang, 'questions')} ({questions.length})
+        </button>
+        <button className={`setup-tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>
+          ⚙️ {t(lang, 'settings')}
+        </button>
+        <button className={`setup-tab ${tab === 'players' ? 'active' : ''}`} onClick={() => setTab('players')}>
+          👥 {t(lang, 'players')} ({players.length})
+        </button>
+      </div>
+
+      <div className="setup-body">
+        {tab === 'questions' && (
+          <>
+            <div className="q-add-form">
+              <div>
+                <label>{editId ? t(lang, 'editQuestion') : t(lang, 'addQuestion')}</label>
+                <textarea
+                  placeholder={t(lang, 'sentencePlaceholder')}
+                  value={sentence}
+                  onChange={e => setSentence(e.target.value)}
+                />
+                <div className="q-hint">{t(lang, 'useBlank')}</div>
+              </div>
+              <div>
+                <label>{t(lang, 'correctAnswer')}</label>
+                <input
+                  className="input"
+                  placeholder={t(lang, 'answerPlaceholder')}
+                  value={answer}
+                  onChange={e => setAnswer(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <label style={{ margin: 0, flex: 1 }}>{t(lang, 'timeLabel', qTime)}</label>
+                <div className="time-picker">
+                  <button className="time-btn" onClick={() => setQTime(t2 => Math.max(10, t2 - 10))} type="button">−</button>
+                  <button className="time-btn" onClick={() => setQTime(t2 => Math.min(120, t2 + 10))} type="button">+</button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <label style={{ margin: 0, flex: 1 }}>
+                  {t(lang, 'voteTimeLabelQ', qVoteTime ?? settings.vote_time)}
+                  {qVoteTime === null && (
+                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginInlineStart: 4 }}>
+                      ({t(lang, 'globalDefault')})
+                    </span>
+                  )}
+                </label>
+                <div className="time-picker">
+                  {qVoteTime !== null && (
+                    <button
+                      className="time-btn"
+                      style={{ fontSize: '0.7rem', padding: '0 6px' }}
+                      onClick={() => setQVoteTime(null)}
+                      type="button"
+                      title={t(lang, 'resetToGlobal')}
+                    >↺</button>
+                  )}
+                  <button className="time-btn" onClick={() => setQVoteTime(v => Math.max(10, (v ?? settings.vote_time) - 5))} type="button">−</button>
+                  <button className="time-btn" onClick={() => setQVoteTime(v => Math.min(120, (v ?? settings.vote_time) + 5))} type="button">+</button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <label className="warmup-toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={isWarmup}
+                    onChange={e => setIsWarmup(e.target.checked)}
+                    style={{ marginInlineEnd: 6 }}
+                  />
+                  {t(lang, 'warmupQuestion')}
+                </label>
+                {isWarmup && (
+                  <span className="warmup-badge">{t(lang, 'noPoints')}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-primary btn-full" onClick={addOrUpdate} disabled={!sentence.trim() || !answer.trim()}>
+                  {editId ? t(lang, 'saveChanges') : t(lang, 'addQuestionBtn')}
+                </button>
+                {editId && (
+                  <button className="btn btn-secondary" onClick={cancelEdit}>{t(lang, 'cancel')}</button>
+                )}
+              </div>
+            </div>
+
+            {questions.length > 0 ? (
+              <div className="q-list">
+                <div className="section-title">{t(lang, 'playersJoined', questions.length).replace('שחקנים', 'שאלות').replace('players', 'questions')}</div>
+                {questions.map((q, i) => (
+                  <div key={q.id} className="q-item">
+                    <div className="q-item-num">{i + 1}</div>
+                    <div className="q-item-content">
+                      <div className="q-item-sentence">{q.sentence}</div>
+                      <div className="q-item-answer">
+                        ✅ {q.answer} · ⏱️ {q.time_limit}s
+                        {q.vote_time != null && <span>· 🗳️ {q.vote_time}s</span>}
+                        {q.is_warmup && <span className="warmup-badge">{t(lang, 'warmup')}</span>}
+                      </div>
+                    </div>
+                    <button className="btn btn-sm btn-secondary" onClick={() => startEdit(q)} style={{ padding: '6px 10px' }}>✏️</button>
+                    <button className="q-item-del" onClick={() => send('remove_question', { id: q.id })}>✕</button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-state-icon">📝</div>
+                <div style={{ whiteSpace: 'pre-line' }}>{t(lang, 'noQuestions')}</div>
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'settings' && (
+          <div className="settings-group">
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">{t(lang, 'answerTime')}</div>
+                <div className="setting-sub">{t(lang, 'answerTimeDesc')}</div>
+              </div>
+              <div className="time-picker">
+                <button className="time-btn" onClick={() => setTimeSetting('answer_time', -10)}>−</button>
+                <span className="time-val">{settings.answer_time}s</span>
+                <button className="time-btn" onClick={() => setTimeSetting('answer_time', 10)}>+</button>
+              </div>
+            </div>
+
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">{t(lang, 'voteTime')}</div>
+                <div className="setting-sub">{t(lang, 'voteTimeDesc')}</div>
+              </div>
+              <div className="time-picker">
+                <button className="time-btn" onClick={() => setTimeSetting('vote_time', -5)}>−</button>
+                <span className="time-val">{settings.vote_time}s</span>
+                <button className="time-btn" onClick={() => setTimeSetting('vote_time', 5)}>+</button>
+              </div>
+            </div>
+
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">{t(lang, 'funnyVotes')}</div>
+                <div className="setting-sub">{t(lang, 'funnyVotesDesc')}</div>
+              </div>
+              <label className="toggle">
+                <input type="checkbox" checked={!!settings.funny_enabled} onChange={() => toggleSetting('funny_enabled')} />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">{t(lang, 'streakBonus')}</div>
+                <div className="setting-sub">{t(lang, 'streakBonusDesc')}</div>
+              </div>
+              <label className="toggle">
+                <input type="checkbox" checked={!!settings.streak_bonus} onChange={() => toggleSetting('streak_bonus')} />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">🌐 {t(lang, 'publicRoom')}</div>
+                <div className="setting-sub">{t(lang, 'publicRoomDesc')}</div>
+              </div>
+              <label className="toggle">
+                <input type="checkbox" checked={!!room.is_public} onChange={() => send('toggle_public', {})} />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {tab === 'players' && (
+          <div>
+            <div className="section-title">{t(lang, 'playersJoined', players.length)}</div>
+            <div className="setup-players">
+              {players.map(p => (
+                <div key={p.id} className="mini-player">
+                  <span>{p.avatar}</span>
+                  <span>{p.name}</span>
+                  {p.is_host && <span style={{ color: 'var(--yellow)', fontSize: '0.7rem' }}>👑</span>}
+                  {p.id === state.playerId && <span style={{ color: 'var(--cyan)', fontSize: '0.65rem' }}>{t(lang, 'you')}</span>}
+                  {!p.is_host && p.id !== state.playerId && (
+                    <button
+                      className="mini-player-kick"
+                      onClick={() => send('kick_player', { player_id: p.id })}
+                      title={t(lang, 'kickPlayer')}
+                    >✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="setup-footer">
+        <button
+          className="btn btn-green btn-full btn-lg"
+          disabled={!canStart}
+          onClick={() => send('start_game', {})}
+        >
+          {canStart ? t(lang, 'startGame', questions.length) : t(lang, 'addQuestionsToStart')}
+        </button>
+      </div>
+    </div>
+  )
+}
