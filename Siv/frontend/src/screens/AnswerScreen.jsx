@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { send } from '../socket.js'
 import { t } from '../i18n.js'
 
@@ -16,6 +16,7 @@ function renderSentence(sentence) {
 
 export default function AnswerScreen({ state, dispatch }) {
   const [text, setText] = useState('')
+  const [announceDismissed, setAnnounceDismissed] = useState(false)
   const submitted = !!state.myAnswer
   const lang = state.lang
 
@@ -28,6 +29,18 @@ export default function AnswerScreen({ state, dispatch }) {
     : pct > 0.25 ? 'var(--yellow)'
     : 'var(--red)'
 
+  const playerAnswerName = state.playerAnswerName
+  const playerAnswerAvatar = state.playerAnswerAvatar
+  const isDesignatedPlayer = playerAnswerName && state.question?.player_answer_id === state.playerId
+
+  // Auto-dismiss announcement after 3s
+  useEffect(() => {
+    if (!playerAnswerName) return
+    setAnnounceDismissed(false)
+    const timer = setTimeout(() => setAnnounceDismissed(true), 3000)
+    return () => clearTimeout(timer)
+  }, [playerAnswerName, state.questionNum])
+
   function submitAnswer(e) {
     e.preventDefault()
     const tx = text.trim()
@@ -38,13 +51,26 @@ export default function AnswerScreen({ state, dispatch }) {
 
   if (!q) return null
 
+  const showAnnouncement = playerAnswerName && !announceDismissed
+
   return (
     <div className="screen answer-screen">
+      {showAnnouncement && (
+        <div className="player-answer-overlay" onClick={() => setAnnounceDismissed(true)}>
+          <div className="player-answer-announce">
+            <div className="pa-avatar">{playerAnswerAvatar || '🎤'}</div>
+            <div className="pa-name">{t(lang, 'playerAnswerAnnounce', playerAnswerName)}</div>
+            <div className="pa-sub">{t(lang, 'playerAnswerSub')}</div>
+          </div>
+        </div>
+      )}
+
       <div className="question-header">
         <div className="question-progress">
           <span>
             {t(lang, 'questionOf', state.questionNum, state.questionTotal)}
             {state.isWarmup && <span className="warmup-badge">{t(lang, 'warmup')}</span>}
+            {playerAnswerName && <span className="warmup-badge" style={{ background: 'rgba(233,30,140,0.15)', color: '#E91E8C', borderColor: 'rgba(233,30,140,0.3)' }}>🎤 {playerAnswerName}</span>}
           </span>
           <span
             className={pct < 0.25 ? 'timer-urgent' : ''}
@@ -74,7 +100,7 @@ export default function AnswerScreen({ state, dispatch }) {
               <input
                 className="input"
                 style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center' }}
-                placeholder={t(lang, 'typeAnswer')}
+                placeholder={isDesignatedPlayer ? t(lang, 'playerAnswerPrompt') : t(lang, 'typeAnswer')}
                 value={text}
                 onChange={e => setText(e.target.value.slice(0, 100))}
                 autoFocus
@@ -82,7 +108,7 @@ export default function AnswerScreen({ state, dispatch }) {
               />
               <button
                 type="submit"
-                className="btn btn-primary btn-full"
+                className={`btn btn-full ${isDesignatedPlayer ? 'btn-pink' : 'btn-primary'}`}
                 disabled={!text.trim()}
               >
                 {t(lang, 'submitAnswer')}

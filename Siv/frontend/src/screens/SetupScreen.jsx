@@ -10,6 +10,7 @@ export default function SetupScreen({ state }) {
   const [qVoteTime, setQVoteTime] = useState(null)  // null = use global
   const [editId, setEditId] = useState(null)
   const [isWarmup, setIsWarmup] = useState(false)
+  const [playerAnswerId, setPlayerAnswerId] = useState(null)
   const lang = state.lang
 
   const room = state.room
@@ -26,16 +27,17 @@ export default function SetupScreen({ state }) {
     const a = answer.trim()
     if (!s || !a) return
     if (editId) {
-      send('update_question', { id: editId, sentence: s, answer: a, time_limit: qTime, vote_time: qVoteTime, is_warmup: isWarmup })
+      send('update_question', { id: editId, sentence: s, answer: a, time_limit: qTime, vote_time: qVoteTime, is_warmup: isWarmup, player_answer_id: playerAnswerId || null })
       setEditId(null)
     } else {
-      send('add_question', { sentence: s, answer: a, time_limit: qTime, vote_time: qVoteTime, is_warmup: isWarmup })
+      send('add_question', { sentence: s, answer: a, time_limit: qTime, vote_time: qVoteTime, is_warmup: isWarmup, player_answer_id: playerAnswerId || null })
     }
     setSentence('')
     setAnswer('')
     setQTime(60)
     setQVoteTime(null)
     setIsWarmup(false)
+    setPlayerAnswerId(null)
   }
 
   function startEdit(q) {
@@ -45,6 +47,7 @@ export default function SetupScreen({ state }) {
     setQTime(q.time_limit)
     setQVoteTime(q.vote_time ?? null)
     setIsWarmup(!!q.is_warmup)
+    setPlayerAnswerId(q.player_answer_id || null)
     setTab('questions')
   }
 
@@ -55,6 +58,7 @@ export default function SetupScreen({ state }) {
     setQTime(60)
     setQVoteTime(null)
     setIsWarmup(false)
+    setPlayerAnswerId(null)
   }
 
   function toggleSetting(key) {
@@ -168,6 +172,30 @@ export default function SetupScreen({ state }) {
                   <span className="warmup-badge">{t(lang, 'noPoints')}</span>
                 )}
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label className="warmup-toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={!!playerAnswerId}
+                    onChange={e => setPlayerAnswerId(e.target.checked ? (players.find(p => !p.is_host)?.id || null) : null)}
+                    style={{ marginInlineEnd: 6 }}
+                  />
+                  🎤 {t(lang, 'playerAnswerMode')}
+                </label>
+                {!!playerAnswerId && (
+                  <select
+                    className="input"
+                    value={playerAnswerId || ''}
+                    onChange={e => setPlayerAnswerId(e.target.value || null)}
+                    style={{ fontSize: '0.9rem' }}
+                  >
+                    <option value="">{t(lang, 'selectPlayer')}</option>
+                    {players.filter(p => !p.is_host).map(p => (
+                      <option key={p.id} value={p.id}>{p.avatar} {p.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-primary btn-full" onClick={addOrUpdate} disabled={!sentence.trim() || !answer.trim()}>
                   {editId ? t(lang, 'saveChanges') : t(lang, 'addQuestionBtn')}
@@ -190,6 +218,10 @@ export default function SetupScreen({ state }) {
                         ✅ {q.answer} · ⏱️ {q.time_limit}s
                         {q.vote_time != null && <span>· 🗳️ {q.vote_time}s</span>}
                         {q.is_warmup && <span className="warmup-badge">{t(lang, 'warmup')}</span>}
+                        {q.player_answer_id && (() => {
+                          const p = players.find(pl => pl.id === q.player_answer_id)
+                          return p ? <span className="warmup-badge" style={{ background: 'rgba(233,30,140,0.12)', color: '#E91E8C', borderColor: 'rgba(233,30,140,0.3)' }}>🎤 {p.name}</span> : null
+                        })()}
                       </div>
                     </div>
                     <button className="btn btn-sm btn-secondary" onClick={() => startEdit(q)} style={{ padding: '6px 10px' }}>✏️</button>
@@ -250,6 +282,17 @@ export default function SetupScreen({ state }) {
               </div>
               <label className="toggle">
                 <input type="checkbox" checked={!!settings.streak_bonus} onChange={() => toggleSetting('streak_bonus')} />
+                <span className="toggle-slider" />
+              </label>
+            </div>
+
+            <div className="setting-row">
+              <div>
+                <div className="setting-label">{t(lang, 'showIntro')}</div>
+                <div className="setting-sub">{t(lang, 'showIntroDesc')}</div>
+              </div>
+              <label className="toggle">
+                <input type="checkbox" checked={settings.show_intro !== false} onChange={() => toggleSetting('show_intro')} />
                 <span className="toggle-slider" />
               </label>
             </div>

@@ -44,10 +44,12 @@ class Question:
     time_limit: int = 60
     vote_time: Optional[int] = None  # None = use global setting
     is_warmup: bool = False
+    player_answer_id: Optional[str] = None  # designated player writes the real answer
 
     def to_dict(self, reveal: bool = False) -> dict:
         d = {"id": self.id, "sentence": self.sentence, "time_limit": self.time_limit,
-             "vote_time": self.vote_time, "is_warmup": self.is_warmup}
+             "vote_time": self.vote_time, "is_warmup": self.is_warmup,
+             "player_answer_id": self.player_answer_id}
         if reveal:
             d["answer"] = self.answer
         return d
@@ -124,6 +126,7 @@ class Room:
         "vote_time": 30,
         "funny_enabled": True,
         "streak_bonus": True,
+        "show_intro": True,
     })
     _timer_task: Optional[asyncio.Task] = field(default=None, repr=False)
 
@@ -177,6 +180,17 @@ class Room:
 
     async def start_game(self):
         self.current_q = 0
+        if self.settings.get("show_intro", True):
+            self.phase = "INTRO"
+            await self.broadcast_room_state()
+            await self.start_timer(18, self._end_intro)
+        else:
+            await self.begin_question()
+
+    async def _end_intro(self):
+        if self.phase != "INTRO":
+            return
+        self.cancel_timer()
         await self.begin_question()
 
     async def begin_question(self):
@@ -188,12 +202,22 @@ class Room:
         for p in self.players.values():
             p.has_answered = False
             p.has_voted = False
+
+        player_answer_name = None
+        player_answer_avatar = None
+        if question.player_answer_id and question.player_answer_id in self.players:
+            pa = self.players[question.player_answer_id]
+            player_answer_name = pa.name
+            player_answer_avatar = pa.avatar
+
         await self.broadcast({
             "type": "question_start",
             "question": question.to_dict(),
             "num": self.current_q + 1,
             "total": len(self.questions),
             "is_warmup": question.is_warmup,
+            "player_answer_name": player_answer_name,
+            "player_answer_avatar": player_answer_avatar,
         })
         await self.start_timer(question.time_limit, self._end_answering)
 
@@ -204,8 +228,20 @@ class Room:
         self.phase = "VOTING"
         question = self.q()
 
-        # Only add real answer once
-        if not any(a.is_real for a in self.round_answers):
+        if question.player_answer_id:
+            # Designated player's submission becomes the real answer
+            pa_answer = next(
+                (a for a in self.round_answers if a.player_id == question.player_answer_id),
+                None
+            )
+            if pa_answer:
+                pa_answer.is_real = True
+            else:
+                # Player didn't submit — fall back to stored answer
+                self.round_answers.append(RoundAnswer(
+                    id=gen_id(), player_id=None, text=question.answer, is_real=True
+                ))
+        elif not any(a.is_real for a in self.round_answers):
             self.round_answers.append(RoundAnswer(
                 id=gen_id(), player_id=None, text=question.answer, is_real=True
             ))
@@ -239,7 +275,9 @@ class Room:
         await self.broadcast_room_state()
 
     async def host_advance(self):
-        if self.phase == "REVEAL":
+        if self.phase == "INTRO":
+            await self._end_intro()
+        elif self.phase == "REVEAL":
             self.phase = "SCOREBOARD"
             await self._send_scoreboard()
             await self.broadcast_room_state()
@@ -284,10 +322,11 @@ class Room:
             pid = ev["player_id"]
             player_points[pid] = player_points.get(pid, 0) + ev["points"]
 
+        real_answer_text = next((a.text for a in self.round_answers if a.is_real), question.answer)
         await self.broadcast({
             "type": "reveal_all",
             "sentence": question.sentence,
-            "real_answer": question.answer,
+            "real_answer": real_answer_text,
             "is_warmup": question.is_warmup,
             "answers": answer_data,
             "player_points": player_points,
@@ -532,6 +571,7 @@ async def ws_endpoint(websocket: WebSocket):
                         time_limit=int(data.get("time_limit", room.settings["answer_time"])),
                         vote_time=int(vt) if vt is not None else None,
                         is_warmup=bool(data.get("is_warmup", False)),
+                        player_answer_id=data.get("player_answer_id") or None,
                     )
                     room.questions.append(q)
                     await room.broadcast_room_state()
@@ -562,6 +602,8 @@ async def ws_endpoint(websocket: WebSocket):
                                 q.vote_time = max(10, min(120, int(vt))) if vt is not None else None
                             if "is_warmup" in data:
                                 q.is_warmup = bool(data["is_warmup"])
+                            if "player_answer_id" in data:
+                                q.player_answer_id = data["player_answer_id"] or None
                             break
                     await room.broadcast_room_state()
 

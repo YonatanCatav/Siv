@@ -7,6 +7,7 @@ import LobbyScreen from './screens/LobbyScreen.jsx'
 import SetupScreen from './screens/SetupScreen.jsx'
 import AnswerScreen from './screens/AnswerScreen.jsx'
 import VotingScreen from './screens/VotingScreen.jsx'
+import IntroScreen from './screens/IntroScreen.jsx'
 import RevealScreen from './screens/RevealScreen.jsx'
 import ScoreboardScreen from './screens/ScoreboardScreen.jsx'
 import GameOverScreen from './screens/GameOverScreen.jsx'
@@ -45,6 +46,8 @@ const INIT = {
   myFunnyVote: null,
   funnyCounts: {},
   isWarmup: false,
+  playerAnswerName: null,
+  playerAnswerAvatar: null,
   errorMsg: null,
 }
 
@@ -90,7 +93,7 @@ function reducer(state, action) {
       // (prevents room_state from rolling back phase set by game messages)
       const serverPhase = action.data.phase
       const clientPhase = state.room?.phase
-      const PHASE_ORDER = ['LOBBY','ANSWERING','VOTING','REVEAL','SCOREBOARD','GAME_OVER']
+      const PHASE_ORDER = ['LOBBY','INTRO','ANSWERING','VOTING','REVEAL','SCOREBOARD','GAME_OVER']
       const serverIdx = PHASE_ORDER.indexOf(serverPhase)
       const clientIdx = PHASE_ORDER.indexOf(clientPhase)
       const finalPhase = serverIdx >= clientIdx ? serverPhase : clientPhase
@@ -111,6 +114,8 @@ function reducer(state, action) {
         questionNum: action.num,
         questionTotal: action.total,
         isWarmup: action.is_warmup || false,
+        playerAnswerName: action.player_answer_name || null,
+        playerAnswerAvatar: action.player_answer_avatar || null,
         myAnswer: null,
         myVote: null,
         myFunnyVote: null,
@@ -212,7 +217,7 @@ export default function App() {
       case 'room_state':
         dispatch({ type: 'ROOM_STATE', data: msg }); break
       case 'question_start':
-        dispatch({ type: 'QUESTION_START', question: msg.question, num: msg.num, total: msg.total, is_warmup: msg.is_warmup }); break
+        dispatch({ type: 'QUESTION_START', question: msg.question, num: msg.num, total: msg.total, is_warmup: msg.is_warmup, player_answer_name: msg.player_answer_name, player_answer_avatar: msg.player_answer_avatar }); break
       case 'timer':
         dispatch({ type: 'TIMER', n: msg.n, total: msg.total }); break
       case 'answer_progress':
@@ -256,6 +261,7 @@ export default function App() {
   let screen = s.uiScreen
   if (screen === 'ingame' && phase) {
     if (phase === 'LOBBY') screen = s.isHost ? 'setup' : 'lobby'
+    else if (phase === 'INTRO') screen = 'intro'
     else if (phase === 'ANSWERING') screen = 'answering'
     else if (phase === 'VOTING') screen = 'voting'
     else if (phase === 'REVEAL') screen = 'reveal'
@@ -294,6 +300,7 @@ export default function App() {
       {screen === 'name' && <NameScreen {...props} />}
       {screen === 'lobby' && <LobbyScreen {...props} />}
       {screen === 'setup' && <SetupScreen {...props} />}
+      {screen === 'intro' && <IntroScreen {...props} />}
       {screen === 'answering' && <AnswerScreen {...props} />}
       {screen === 'voting' && <VotingScreen {...props} />}
       {screen === 'reveal' && <RevealScreen {...props} />}
