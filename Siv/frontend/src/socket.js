@@ -13,7 +13,14 @@ export function connect(onMsg, onConnect, onDisconnect) {
 
 function _open() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
-  const host = import.meta.env.DEV ? 'localhost:8001' : location.host
+  let host
+  if (import.meta.env.DEV) {
+    host = 'localhost:8001'
+  } else if (import.meta.env.VITE_BACKEND_URL) {
+    host = import.meta.env.VITE_BACKEND_URL.replace(/^https?:\/\//, '')
+  } else {
+    host = location.host
+  }
   ws = new WebSocket(`${protocol}://${host}/ws`)
 
   ws.onopen = () => {

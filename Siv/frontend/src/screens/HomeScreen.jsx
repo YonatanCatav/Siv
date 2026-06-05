@@ -9,7 +9,8 @@ export default function HomeScreen({ state, dispatch }) {
 
   useEffect(() => {
     if (!showJoin) return
-    fetch('/rooms')
+    const base = import.meta.env.VITE_BACKEND_URL || ''
+    fetch(`${base}/rooms`)
       .then(r => r.json())
       .then(setRooms)
       .catch(() => setRooms([]))
