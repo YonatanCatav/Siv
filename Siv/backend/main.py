@@ -587,7 +587,7 @@ async def ws_endpoint(websocket: WebSocket):
                     for item in items:
                         sentence = str(item.get("sentence", "")).strip()
                         answer = str(item.get("answer", "")).strip()
-                        if not sentence or not answer:
+                        if not sentence:
                             continue
                         if "___" not in sentence:
                             sentence += " ___"

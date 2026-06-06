@@ -120,10 +120,11 @@ export default function SetupScreen({ state }) {
   }
 
   function importBundle() {
-    const qs = SIV_BUNDLE
-      .map((q, i) => ({ sentence: q.sentence, answer: bundleAnswers[i].trim(), is_warmup: !!q.is_warmup }))
-      .filter(q => q.answer)
-    if (!qs.length) return
+    const qs = SIV_BUNDLE.map((q, i) => ({
+      sentence: q.sentence,
+      answer: bundleAnswers[i].trim(),
+      is_warmup: !!q.is_warmup,
+    }))
     send('batch_questions', { questions: qs })
     setShowBundle(false)
     setBundleAnswers(SIV_BUNDLE.map(q => q.answer))
@@ -335,9 +336,8 @@ export default function SetupScreen({ state }) {
                 <button
                   className="btn btn-primary btn-full"
                   onClick={importBundle}
-                  disabled={!bundleAnswers.some(a => a.trim())}
                 >
-                  {t(lang, 'bundleImportBtn')} ({bundleAnswers.filter(a => a.trim()).length}/{SIV_BUNDLE.length})
+                  {t(lang, 'bundleImportBtn')} ({SIV_BUNDLE.length})
                 </button>
               </div>
             )}
