@@ -3,20 +3,22 @@ import { send } from '../socket.js'
 import { t } from '../i18n.js'
 
 const SIV_BUNDLE = [
-  'סיון נהגה לשמור על ___ כשהייתה בת 11',
-  'לפני כמה שנים סיון ___ ושברה את היד',
-  'סיון ___ כשלמדה בבאר שבע',
-  'לסיון יש ___ בבית, ואין את זה כמעט באף בית בעולם',
-  'כדי להתאמן על לקעקע, סיון הייתה צריכה ___',
-  'אחת לשבוע יש לה אימון ___ שבו הם מתאמנים יחד',
-  'סיון הכירה את תאם ___ ממש באופן ספונטני',
-  'לסיון יש ___ למקרה והמדינה תלך לאבדון',
-  'המאלף של קוקו ___ מה שהופך את ההתמדה באילוף לפשוטה',
-  'המאכל שסיון הכי שונאת הוא ___',
-  'הguilty pleasure של סיון הוא ___',
-  'השיעור הכי חשוב שסיון למדה מתאם הוא ש___',
-  'אם לסיון היה כח על זה היה בוודאי ___',
-  'תאם אוהב שסיון ___, במיוחד בסופי שבוע',
+  { sentence: 'אין שני אנשים בעולם ___', answer: 'עם אותה טביעת עין או לשון', is_warmup: true },
+  { sentence: 'בשנת 1830 מכרו ___ כתרופה', answer: 'קטשופ', is_warmup: true },
+  { sentence: 'סיון נהגה לשמור על ___ כשהייתה בת 11', answer: 'אמנון ויונתן' },
+  { sentence: 'לפני כמה שנים סיון ___ ושברה את היד', answer: 'רכבה על קורקינט' },
+  { sentence: 'סיון ___ כשלמדה בבאר שבע', answer: 'עשתה חילופי סטודנטים במדריד' },
+  { sentence: 'לסיון יש ___ בבית, ואין את זה כמעט באף בית בעולם', answer: 'אובניים' },
+  { sentence: 'כדי להתאמן על לקעקע, סיון הייתה צריכה ___', answer: 'לקעקע על עור של חזיר' },
+  { sentence: 'אחת לשבוע יש לה אימון ___ שבו הם מתאמנים יחד', answer: 'עם קוקו' },
+  { sentence: 'סיון הכירה את תאם ___ ממש באופן ספונטני', answer: 'בבית קפה שבקיבוץ' },
+  { sentence: 'לסיון יש ___ למקרה והמדינה תלך לאבדון', answer: 'דרכון פורטוגלי' },
+  { sentence: 'המאלף של קוקו ___ מה שהופך את ההתמדה באילוף לפשוטה', answer: 'גר בקיבוץ' },
+  { sentence: 'המאכל שסיון הכי שונאת הוא ___', answer: '' },
+  { sentence: 'הguilty pleasure של סיון הוא ___', answer: '' },
+  { sentence: 'השיעור הכי חשוב שסיון למדה מתאם הוא ש___', answer: '' },
+  { sentence: 'אם לסיון היה כח על זה היה בוודאי ___', answer: '' },
+  { sentence: 'תאם אוהב שסיון ___, במיוחד בסופי שבוע', answer: '' },
 ]
 
 function ShareLink({ room, lang }) {
@@ -56,7 +58,7 @@ export default function SetupScreen({ state }) {
   const [showDelete, setShowDelete] = useState(false)
   const [deletePw, setDeletePw] = useState('')
   const [showBundle, setShowBundle] = useState(false)
-  const [bundleAnswers, setBundleAnswers] = useState(() => SIV_BUNDLE.map(() => ''))
+  const [bundleAnswers, setBundleAnswers] = useState(() => SIV_BUNDLE.map(q => q.answer))
   const lang = state.lang
 
   const room = state.room
@@ -118,12 +120,13 @@ export default function SetupScreen({ state }) {
   }
 
   function importBundle() {
-    const qs = SIV_BUNDLE.map((sentence, i) => ({ sentence, answer: bundleAnswers[i].trim() }))
+    const qs = SIV_BUNDLE
+      .map((q, i) => ({ sentence: q.sentence, answer: bundleAnswers[i].trim(), is_warmup: !!q.is_warmup }))
       .filter(q => q.answer)
     if (!qs.length) return
     send('batch_questions', { questions: qs })
     setShowBundle(false)
-    setBundleAnswers(SIV_BUNDLE.map(() => ''))
+    setBundleAnswers(SIV_BUNDLE.map(q => q.answer))
   }
 
   return (
@@ -313,9 +316,12 @@ export default function SetupScreen({ state }) {
                   <button className="btn btn-sm btn-secondary" onClick={() => setShowBundle(false)}>{t(lang, 'cancel')}</button>
                 </div>
                 <div className="bundle-import-list">
-                  {SIV_BUNDLE.map((sent, i) => (
+                  {SIV_BUNDLE.map((q, i) => (
                     <div key={i} className="bundle-row">
-                      <div className="bundle-sentence" dir="rtl">{sent}</div>
+                      <div className="bundle-sentence" dir="rtl">
+                        {q.is_warmup && <span className="warmup-badge" style={{ marginInlineEnd: 6 }}>חימום</span>}
+                        {q.sentence}
+                      </div>
                       <input
                         className="input bundle-answer-input"
                         placeholder="תשובה..."

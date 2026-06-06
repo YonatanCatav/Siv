@@ -596,6 +596,7 @@ async def ws_endpoint(websocket: WebSocket):
                             sentence=sentence,
                             answer=answer,
                             time_limit=room.settings["answer_time"],
+                            is_warmup=bool(item.get("is_warmup", False)),
                         ))
                     await room.broadcast_room_state()
 
