@@ -8,6 +8,7 @@ const AVATARS = ['🦊','🐼','🦄','🐸','🦁','🐯','🦋','🐬','🦝',
 export default function NameScreen({ state, dispatch }) {
   const [name, setName] = useState('')
   const [avatar, setAvatar] = useState(AVATARS[Math.floor(Math.random() * AVATARS.length)])
+  const [roomName, setRoomName] = useState('')
   const [customCode, setCustomCode] = useState('')
   const [isPublic, setIsPublic] = useState(false)
   const [password, setPassword] = useState('')
@@ -18,7 +19,7 @@ export default function NameScreen({ state, dispatch }) {
     const n = name.trim()
     if (!n) return
     if (state.isCreating) {
-      send('create_room', { name: n, avatar, code: customCode.trim().toUpperCase(), is_public: isPublic, password: password.trim() })
+      send('create_room', { name: n, avatar, room_name: roomName.trim(), code: customCode.trim().toUpperCase(), is_public: isPublic, password: password.trim() })
     } else {
       send('join_room', { code: state.pendingCode, name: n, avatar })
     }
@@ -58,6 +59,13 @@ export default function NameScreen({ state, dispatch }) {
           />
           {state.isCreating && (
             <>
+              <input
+                className="input"
+                placeholder={t(lang, 'roomNamePlaceholder')}
+                value={roomName}
+                onChange={e => setRoomName(e.target.value.slice(0, 40))}
+                autoComplete="off"
+              />
               <input
                 className="input"
                 placeholder={t(lang, 'customCodePlaceholder')}

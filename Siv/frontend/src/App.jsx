@@ -260,6 +260,11 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const roomParam = new URLSearchParams(location.search).get('room')
+    if (roomParam) {
+      localStorage.removeItem('siv_session')
+      dispatch({ type: 'GO_JOIN', code: roomParam.toUpperCase() })
+    }
     connect(handleMsg, () => {}, () => dispatch({ type: 'DISCONNECTED' }))
   }, [handleMsg])
 

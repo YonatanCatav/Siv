@@ -122,6 +122,7 @@ class Room:
     round_answers: list = field(default_factory=list)
     is_public: bool = False
     password: Optional[str] = None
+    room_name: Optional[str] = None
     settings: dict = field(default_factory=lambda: {
         "answer_time": 60,
         "vote_time": 30,
@@ -184,15 +185,8 @@ class Room:
         if self.settings.get("show_intro", True):
             self.phase = "INTRO"
             await self.broadcast_room_state()
-            await self.start_timer(18, self._end_intro)
         else:
             await self.begin_question()
-
-    async def _end_intro(self):
-        if self.phase != "INTRO":
-            return
-        self.cancel_timer()
-        await self.begin_question()
 
     async def begin_question(self):
         question = self.q()
@@ -277,7 +271,8 @@ class Room:
 
     async def host_advance(self):
         if self.phase == "INTRO":
-            await self._end_intro()
+            self.cancel_timer()
+            await self.begin_question()
         elif self.phase == "REVEAL":
             self.phase = "SCOREBOARD"
             await self._send_scoreboard()
@@ -464,6 +459,7 @@ class Room:
             "current_q": self.current_q,
             "is_public": self.is_public,
             "has_password": bool(self.password),
+            "room_name": self.room_name,
         })
 
 
@@ -494,7 +490,8 @@ async def ws_endpoint(websocket: WebSocket):
                 custom = data.get("code", "").upper().strip()[:8]
                 code = custom if (custom and len(custom) >= 2 and custom not in ROOMS) else gen_code()
                 pw = data.get("password", "").strip()
-                room = Room(code=code, host_id=pid, is_public=bool(data.get("is_public", False)), password=pw or None)
+                rn = data.get("room_name", "").strip()[:40]
+                room = Room(code=code, host_id=pid, is_public=bool(data.get("is_public", False)), password=pw or None, room_name=rn or None)
                 ROOMS[code] = room
                 name = data.get("name", "Host")[:20]
                 avatar = data.get("avatar") or random.choice(AVATARS)
@@ -581,6 +578,25 @@ async def ws_endpoint(websocket: WebSocket):
                         player_answer_id=data.get("player_answer_id") or None,
                     )
                     room.questions.append(q)
+                    await room.broadcast_room_state()
+
+                elif t == "batch_questions":
+                    if not player.is_host:
+                        continue
+                    items = data.get("questions", [])
+                    for item in items:
+                        sentence = str(item.get("sentence", "")).strip()
+                        answer = str(item.get("answer", "")).strip()
+                        if not sentence or not answer:
+                            continue
+                        if "___" not in sentence:
+                            sentence += " ___"
+                        room.questions.append(Question(
+                            id=gen_id(),
+                            sentence=sentence,
+                            answer=answer,
+                            time_limit=room.settings["answer_time"],
+                        ))
                     await room.broadcast_room_state()
 
                 elif t == "remove_question":
@@ -760,6 +776,7 @@ async def list_rooms():
                 "phase": r.phase,
                 "is_public": r.is_public,
                 "has_password": bool(r.password),
+                "room_name": r.room_name,
             })
     return result
 

@@ -612,7 +612,110 @@ html, body {
   color: var(--yellow);
 }
 
-.lobby-hint { color: var(--muted); font-size: 0.85rem; }
+.lobby-hint { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+
+.lobby-room-name {
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+  color: var(--cyan);
+}
+
+/* ─── Share link ─────────────────────────────────────────── */
+.share-link-row {
+  padding: 8px 16px 0;
+  flex-shrink: 0;
+}
+.share-room-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--cyan);
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+.share-link-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 7px 12px;
+  overflow: hidden;
+}
+.share-link-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.share-link-url {
+  flex: 1;
+  font-size: 0.78rem;
+  color: var(--cyan);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.share-link-copy {
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.25);
+  color: var(--cyan);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.share-link-copy:hover { background: rgba(0,229,255,0.2); }
+.share-link-copy.copied { background: rgba(76,175,80,0.2); border-color: rgba(76,175,80,0.4); color: var(--green); }
+
+/* ─── Bundle import ──────────────────────────────────────── */
+.bundle-import {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+}
+.bundle-import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.bundle-import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.bundle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 10px 12px;
+}
+.bundle-sentence {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.bundle-answer-input {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+}
 
 .lobby-waiting {
   display: flex;

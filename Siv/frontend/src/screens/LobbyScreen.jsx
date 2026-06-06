@@ -1,4 +1,27 @@
+import { useState } from 'react'
 import { t } from '../i18n.js'
+
+function ShareLink({ room, lang }) {
+  const [copied, setCopied] = useState(false)
+  const link = `${window.location.origin}/?room=${room.code}`
+
+  function copy() {
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="share-link-box">
+      <span className="share-link-label">{t(lang, 'shareLink')}</span>
+      <span className="share-link-url" dir="ltr">{link}</span>
+      <button className={`share-link-copy ${copied ? 'copied' : ''}`} onClick={copy}>
+        {copied ? t(lang, 'linkCopied') : t(lang, 'copyLink')}
+      </button>
+    </div>
+  )
+}
 
 export default function LobbyScreen({ state }) {
   const room = state.room
@@ -16,11 +39,15 @@ export default function LobbyScreen({ state }) {
       </div>
 
       <div className="lobby-header">
+        {room.room_name && (
+          <div className="lobby-room-name">{room.room_name}</div>
+        )}
         <div style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 700, marginBottom: 8 }}>
           {t(lang, 'roomCodeLabel')}
         </div>
         <div className="lobby-room-code" dir="ltr">{room.code}</div>
         <div className="lobby-hint">{t(lang, 'shareCode')}</div>
+        <ShareLink room={room} lang={lang} />
       </div>
 
       <div className="lobby-waiting">

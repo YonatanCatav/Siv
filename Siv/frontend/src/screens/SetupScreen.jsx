@@ -2,17 +2,61 @@ import { useState } from 'react'
 import { send } from '../socket.js'
 import { t } from '../i18n.js'
 
+const SIV_BUNDLE = [
+  'סיון נהגה לשמור על ___ כשהייתה בת 11',
+  'לפני כמה שנים סיון ___ ושברה את היד',
+  'סיון ___ כשלמדה בבאר שבע',
+  'לסיון יש ___ בבית, ואין את זה כמעט באף בית בעולם',
+  'כדי להתאמן על לקעקע, סיון הייתה צריכה ___',
+  'אחת לשבוע יש לה אימון ___ שבו הם מתאמנים יחד',
+  'סיון הכירה את תאם ___ ממש באופן ספונטני',
+  'לסיון יש ___ למקרה והמדינה תלך לאבדון',
+  'המאלף של קוקו ___ מה שהופך את ההתמדה באילוף לפשוטה',
+  'המאכל שסיון הכי שונאת הוא ___',
+  'הguilty pleasure של סיון הוא ___',
+  'השיעור הכי חשוב שסיון למדה מתאם הוא ש___',
+  'אם לסיון היה כח על זה היה בוודאי ___',
+  'תאם אוהב שסיון ___, במיוחד בסופי שבוע',
+]
+
+function ShareLink({ room, lang }) {
+  const [copied, setCopied] = useState(false)
+  const link = `${window.location.origin}/?room=${room.code}`
+
+  function copy() {
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="share-link-row">
+      {room.room_name && <div className="share-room-name">{room.room_name}</div>}
+      <div className="share-link-box">
+        <span className="share-link-label">{t(lang, 'shareLink')}</span>
+        <span className="share-link-url" dir="ltr">{link}</span>
+        <button className={`share-link-copy ${copied ? 'copied' : ''}`} onClick={copy}>
+          {copied ? t(lang, 'linkCopied') : t(lang, 'copyLink')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function SetupScreen({ state }) {
   const [tab, setTab] = useState('questions')
   const [sentence, setSentence] = useState('')
   const [answer, setAnswer] = useState('')
   const [qTime, setQTime] = useState(60)
-  const [qVoteTime, setQVoteTime] = useState(null)  // null = use global
+  const [qVoteTime, setQVoteTime] = useState(null)
   const [editId, setEditId] = useState(null)
   const [isWarmup, setIsWarmup] = useState(false)
   const [playerAnswerId, setPlayerAnswerId] = useState(null)
   const [showDelete, setShowDelete] = useState(false)
   const [deletePw, setDeletePw] = useState('')
+  const [showBundle, setShowBundle] = useState(false)
+  const [bundleAnswers, setBundleAnswers] = useState(() => SIV_BUNDLE.map(() => ''))
   const lang = state.lang
 
   const room = state.room
@@ -51,6 +95,7 @@ export default function SetupScreen({ state }) {
     setIsWarmup(!!q.is_warmup)
     setPlayerAnswerId(q.player_answer_id || null)
     setTab('questions')
+    setShowBundle(false)
   }
 
   function cancelEdit() {
@@ -70,6 +115,15 @@ export default function SetupScreen({ state }) {
   function setTimeSetting(key, delta) {
     const val = Math.max(10, Math.min(120, (settings[key] || 60) + delta))
     send('update_settings', { settings: { [key]: val } })
+  }
+
+  function importBundle() {
+    const qs = SIV_BUNDLE.map((sentence, i) => ({ sentence, answer: bundleAnswers[i].trim() }))
+      .filter(q => q.answer)
+    if (!qs.length) return
+    send('batch_questions', { questions: qs })
+    setShowBundle(false)
+    setBundleAnswers(SIV_BUNDLE.map(() => ''))
   }
 
   return (
@@ -99,6 +153,8 @@ export default function SetupScreen({ state }) {
         </div>
       )}
 
+      <ShareLink room={room} lang={lang} />
+
       <div className="setup-tabs">
         <button className={`setup-tab ${tab === 'questions' ? 'active' : ''}`} onClick={() => setTab('questions')}>
           📝 {t(lang, 'questions')} ({questions.length})
@@ -114,130 +170,169 @@ export default function SetupScreen({ state }) {
       <div className="setup-body">
         {tab === 'questions' && (
           <>
-            <div className="q-add-form">
-              <div>
-                <label>{editId ? t(lang, 'editQuestion') : t(lang, 'addQuestion')}</label>
-                <textarea
-                  placeholder={t(lang, 'sentencePlaceholder')}
-                  value={sentence}
-                  onChange={e => setSentence(e.target.value)}
-                />
-                <div className="q-hint">{t(lang, 'useBlank')}</div>
-              </div>
-              <div>
-                <label>{t(lang, 'correctAnswer')}</label>
-                <input
-                  className="input"
-                  placeholder={t(lang, 'answerPlaceholder')}
-                  value={answer}
-                  onChange={e => setAnswer(e.target.value)}
-                />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <label style={{ margin: 0, flex: 1 }}>{t(lang, 'timeLabel', qTime)}</label>
-                <div className="time-picker">
-                  <button className="time-btn" onClick={() => setQTime(t2 => Math.max(10, t2 - 10))} type="button">−</button>
-                  <button className="time-btn" onClick={() => setQTime(t2 => Math.min(120, t2 + 10))} type="button">+</button>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <label style={{ margin: 0, flex: 1 }}>
-                  {t(lang, 'voteTimeLabelQ', qVoteTime ?? settings.vote_time)}
-                  {qVoteTime === null && (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginInlineStart: 4 }}>
-                      ({t(lang, 'globalDefault')})
-                    </span>
-                  )}
-                </label>
-                <div className="time-picker">
-                  {qVoteTime !== null && (
-                    <button
-                      className="time-btn"
-                      style={{ fontSize: '0.7rem', padding: '0 6px' }}
-                      onClick={() => setQVoteTime(null)}
-                      type="button"
-                      title={t(lang, 'resetToGlobal')}
-                    >↺</button>
-                  )}
-                  <button className="time-btn" onClick={() => setQVoteTime(v => Math.max(10, (v ?? settings.vote_time) - 5))} type="button">−</button>
-                  <button className="time-btn" onClick={() => setQVoteTime(v => Math.min(120, (v ?? settings.vote_time) + 5))} type="button">+</button>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <label className="warmup-toggle-label">
-                  <input
-                    type="checkbox"
-                    checked={isWarmup}
-                    onChange={e => setIsWarmup(e.target.checked)}
-                    style={{ marginInlineEnd: 6 }}
-                  />
-                  {t(lang, 'warmupQuestion')}
-                </label>
-                {isWarmup && (
-                  <span className="warmup-badge">{t(lang, 'noPoints')}</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label className="warmup-toggle-label">
-                  <input
-                    type="checkbox"
-                    checked={!!playerAnswerId}
-                    onChange={e => setPlayerAnswerId(e.target.checked ? (players.find(p => !p.is_host)?.id || null) : null)}
-                    style={{ marginInlineEnd: 6 }}
-                  />
-                  🎤 {t(lang, 'playerAnswerMode')}
-                </label>
-                {!!playerAnswerId && (
-                  <select
-                    className="input"
-                    value={playerAnswerId || ''}
-                    onChange={e => setPlayerAnswerId(e.target.value || null)}
-                    style={{ fontSize: '0.9rem' }}
-                  >
-                    <option value="">{t(lang, 'selectPlayer')}</option>
-                    {players.filter(p => !p.is_host).map(p => (
-                      <option key={p.id} value={p.id}>{p.avatar} {p.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-primary btn-full" onClick={addOrUpdate} disabled={!sentence.trim() || !answer.trim()}>
-                  {editId ? t(lang, 'saveChanges') : t(lang, 'addQuestionBtn')}
-                </button>
-                {editId && (
-                  <button className="btn btn-secondary" onClick={cancelEdit}>{t(lang, 'cancel')}</button>
-                )}
-              </div>
-            </div>
-
-            {questions.length > 0 ? (
-              <div className="q-list">
-                <div className="section-title">{t(lang, 'playersJoined', questions.length).replace('שחקנים', 'שאלות').replace('players', 'questions')}</div>
-                {questions.map((q, i) => (
-                  <div key={q.id} className="q-item">
-                    <div className="q-item-num">{i + 1}</div>
-                    <div className="q-item-content">
-                      <div className="q-item-sentence">{q.sentence}</div>
-                      <div className="q-item-answer">
-                        ✅ {q.answer} · ⏱️ {q.time_limit}s
-                        {q.vote_time != null && <span>· 🗳️ {q.vote_time}s</span>}
-                        {q.is_warmup && <span className="warmup-badge">{t(lang, 'warmup')}</span>}
-                        {q.player_answer_id && (() => {
-                          const p = players.find(pl => pl.id === q.player_answer_id)
-                          return p ? <span className="warmup-badge" style={{ background: 'rgba(233,30,140,0.12)', color: '#E91E8C', borderColor: 'rgba(233,30,140,0.3)' }}>🎤 {p.name}</span> : null
-                        })()}
-                      </div>
-                    </div>
-                    <button className="btn btn-sm btn-secondary" onClick={() => startEdit(q)} style={{ padding: '6px 10px' }}>✏️</button>
-                    <button className="q-item-del" onClick={() => send('remove_question', { id: q.id })}>✕</button>
+            {!showBundle ? (
+              <>
+                <div className="q-add-form">
+                  <div>
+                    <label>{editId ? t(lang, 'editQuestion') : t(lang, 'addQuestion')}</label>
+                    <textarea
+                      placeholder={t(lang, 'sentencePlaceholder')}
+                      value={sentence}
+                      onChange={e => setSentence(e.target.value)}
+                    />
+                    <div className="q-hint">{t(lang, 'useBlank')}</div>
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <label>{t(lang, 'correctAnswer')}</label>
+                    <input
+                      className="input"
+                      placeholder={t(lang, 'answerPlaceholder')}
+                      value={answer}
+                      onChange={e => setAnswer(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <label style={{ margin: 0, flex: 1 }}>{t(lang, 'timeLabel', qTime)}</label>
+                    <div className="time-picker">
+                      <button className="time-btn" onClick={() => setQTime(t2 => Math.max(10, t2 - 10))} type="button">−</button>
+                      <button className="time-btn" onClick={() => setQTime(t2 => Math.min(120, t2 + 10))} type="button">+</button>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <label style={{ margin: 0, flex: 1 }}>
+                      {t(lang, 'voteTimeLabelQ', qVoteTime ?? settings.vote_time)}
+                      {qVoteTime === null && (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginInlineStart: 4 }}>
+                          ({t(lang, 'globalDefault')})
+                        </span>
+                      )}
+                    </label>
+                    <div className="time-picker">
+                      {qVoteTime !== null && (
+                        <button
+                          className="time-btn"
+                          style={{ fontSize: '0.7rem', padding: '0 6px' }}
+                          onClick={() => setQVoteTime(null)}
+                          type="button"
+                          title={t(lang, 'resetToGlobal')}
+                        >↺</button>
+                      )}
+                      <button className="time-btn" onClick={() => setQVoteTime(v => Math.max(10, (v ?? settings.vote_time) - 5))} type="button">−</button>
+                      <button className="time-btn" onClick={() => setQVoteTime(v => Math.min(120, (v ?? settings.vote_time) + 5))} type="button">+</button>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <label className="warmup-toggle-label">
+                      <input
+                        type="checkbox"
+                        checked={isWarmup}
+                        onChange={e => setIsWarmup(e.target.checked)}
+                        style={{ marginInlineEnd: 6 }}
+                      />
+                      {t(lang, 'warmupQuestion')}
+                    </label>
+                    {isWarmup && (
+                      <span className="warmup-badge">{t(lang, 'noPoints')}</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label className="warmup-toggle-label">
+                      <input
+                        type="checkbox"
+                        checked={!!playerAnswerId}
+                        onChange={e => setPlayerAnswerId(e.target.checked ? (players.find(p => !p.is_host)?.id || null) : null)}
+                        style={{ marginInlineEnd: 6 }}
+                      />
+                      🎤 {t(lang, 'playerAnswerMode')}
+                    </label>
+                    {!!playerAnswerId && (
+                      <select
+                        className="input"
+                        value={playerAnswerId || ''}
+                        onChange={e => setPlayerAnswerId(e.target.value || null)}
+                        style={{ fontSize: '0.9rem' }}
+                      >
+                        <option value="">{t(lang, 'selectPlayer')}</option>
+                        {players.filter(p => !p.is_host).map(p => (
+                          <option key={p.id} value={p.id}>{p.avatar} {p.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-primary btn-full" onClick={addOrUpdate} disabled={!sentence.trim() || !answer.trim()}>
+                      {editId ? t(lang, 'saveChanges') : t(lang, 'addQuestionBtn')}
+                    </button>
+                    {editId && (
+                      <button className="btn btn-secondary" onClick={cancelEdit}>{t(lang, 'cancel')}</button>
+                    )}
+                  </div>
+                  <button
+                    className="btn btn-secondary btn-full btn-sm"
+                    style={{ marginTop: -4 }}
+                    onClick={() => setShowBundle(true)}
+                  >
+                    📦 {t(lang, 'loadBundle')}
+                  </button>
+                </div>
+
+                {questions.length > 0 ? (
+                  <div className="q-list">
+                    <div className="section-title">{t(lang, 'playersJoined', questions.length).replace('שחקנים', 'שאלות').replace('players', 'questions')}</div>
+                    {questions.map((q, i) => (
+                      <div key={q.id} className="q-item">
+                        <div className="q-item-num">{i + 1}</div>
+                        <div className="q-item-content">
+                          <div className="q-item-sentence">{q.sentence}</div>
+                          <div className="q-item-answer">
+                            ✅ {q.answer} · ⏱️ {q.time_limit}s
+                            {q.vote_time != null && <span>· 🗳️ {q.vote_time}s</span>}
+                            {q.is_warmup && <span className="warmup-badge">{t(lang, 'warmup')}</span>}
+                            {q.player_answer_id && (() => {
+                              const p = players.find(pl => pl.id === q.player_answer_id)
+                              return p ? <span className="warmup-badge" style={{ background: 'rgba(233,30,140,0.12)', color: '#E91E8C', borderColor: 'rgba(233,30,140,0.3)' }}>🎤 {p.name}</span> : null
+                            })()}
+                          </div>
+                        </div>
+                        <button className="btn btn-sm btn-secondary" onClick={() => startEdit(q)} style={{ padding: '6px 10px' }}>✏️</button>
+                        <button className="q-item-del" onClick={() => send('remove_question', { id: q.id })}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📝</div>
+                    <div style={{ whiteSpace: 'pre-line' }}>{t(lang, 'noQuestions')}</div>
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="empty-state">
-                <div className="empty-state-icon">📝</div>
-                <div style={{ whiteSpace: 'pre-line' }}>{t(lang, 'noQuestions')}</div>
+              <div className="bundle-import">
+                <div className="bundle-import-header">
+                  <span>📦 {t(lang, 'bundleImportTitle')}</span>
+                  <button className="btn btn-sm btn-secondary" onClick={() => setShowBundle(false)}>{t(lang, 'cancel')}</button>
+                </div>
+                <div className="bundle-import-list">
+                  {SIV_BUNDLE.map((sent, i) => (
+                    <div key={i} className="bundle-row">
+                      <div className="bundle-sentence" dir="rtl">{sent}</div>
+                      <input
+                        className="input bundle-answer-input"
+                        placeholder="תשובה..."
+                        value={bundleAnswers[i]}
+                        onChange={e => setBundleAnswers(prev => prev.map((v, j) => j === i ? e.target.value : v))}
+                        dir="rtl"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  className="btn btn-primary btn-full"
+                  onClick={importBundle}
+                  disabled={!bundleAnswers.some(a => a.trim())}
+                >
+                  {t(lang, 'bundleImportBtn')} ({bundleAnswers.filter(a => a.trim()).length}/{SIV_BUNDLE.length})
+                </button>
               </div>
             )}
           </>

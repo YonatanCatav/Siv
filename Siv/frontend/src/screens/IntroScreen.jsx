@@ -98,12 +98,6 @@ export default function IntroScreen({ state }) {
   const [slideIdx, setSlideIdx] = useState(0)
   const lang = state.lang
 
-  useEffect(() => {
-    if (slideIdx >= SLIDES.length - 1) return
-    const timer = setTimeout(() => setSlideIdx(i => i + 1), 4500)
-    return () => clearTimeout(timer)
-  }, [slideIdx])
-
   const slide = SLIDES[slideIdx]
   const { Visual } = slide
   const done = slideIdx >= SLIDES.length - 1

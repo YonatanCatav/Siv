@@ -134,6 +134,13 @@ export const LANGS = {
     confirmDelete: 'מחק',
     introStep4Title: 'הצבעה מצחיקה',
     introStep4Desc: 'מצאת תשובה מצחיקה? לחץ 😂 ליד התשובה — הכותב יקבל +100 נקודות ואתה תכניס אותו לסיבוב הבא מחויך',
+    roomNamePlaceholder: 'שם החדר (אופציונלי)',
+    shareLink: 'קישור לחדר',
+    copyLink: 'העתק',
+    linkCopied: '!הועתק',
+    loadBundle: 'טען חבילת שאלות',
+    bundleImportTitle: 'טעינת שאלות — מלא תשובות',
+    bundleImportBtn: 'הוסף שאלות לחדר',
 
     // Reveal scoring
     theVerdict: '🏆 התוצאות',
@@ -288,6 +295,13 @@ export const LANGS = {
     confirmDelete: 'Delete',
     introStep4Title: 'Funny Votes',
     introStep4Desc: "Found a funny answer? Tap 😂 next to it — the author gets +100 points and you can give as many funny votes as you want",
+    roomNamePlaceholder: 'Room name (optional)',
+    shareLink: 'Room link',
+    copyLink: 'Copy',
+    linkCopied: 'Copied!',
+    loadBundle: 'Load question bundle',
+    bundleImportTitle: 'Load Questions — Fill in Answers',
+    bundleImportBtn: 'Add questions to room',
 
     theVerdict: '🏆 The Results!',
     youEarned: (pts) => `You earned +${pts} pts this round!`,
